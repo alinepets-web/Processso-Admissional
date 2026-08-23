@@ -156,7 +156,7 @@ function updateAuthUI(){
   }
 
   subtitleText.textContent = isEditor
-    ? 'Clique em uma célula para marcar/desmarcar a etapa (a data é registrada automaticamente). Em Integração e Subsolo, clique para agendar uma data e depois confirmar a conclusão.'
+    ? 'Clique em uma célula para marcar a etapa como concluída e informar a data (pode ser retroativa). Clique numa etapa já concluída para desmarcar ou corrigir a data. Em Integração e Subsolo, clique para agendar uma data e depois confirmar a conclusão.'
     : 'Modo visualização — apenas alinepets@gmail.com pode editar este checklist.';
 
   editToolbar.style.display = isEditor ? 'flex' : 'none';
@@ -264,7 +264,32 @@ async function toggleStep(empId, stepKey){
   const emp = state.find(e => e.id === empId);
   if(!emp) return;
   const cur = emp.steps[stepKey];
-  cur.done ? (cur.done=false, cur.date='') : (cur.done=true, cur.date=todayBR());
+  const stepInfo = STEPS.find(x => x.key === stepKey);
+
+  if(cur.done){
+    // Já concluído: permite desmarcar ou corrigir a data
+    if(confirm('"'+stepInfo.label+'" de '+emp.name+' está concluído em '+cur.date+'. Desmarcar conclusão?')){
+      cur.done = false;
+      cur.date = '';
+      render();
+      await save();
+      return;
+    }
+    if(confirm('Deseja editar a data de conclusão?')){
+      const newDate = await promptForDate(cur.date);
+      if(newDate === undefined || newDate === '') return; // cancelado ou vazio
+      cur.date = newDate;
+      render();
+      await save();
+    }
+    return;
+  }
+
+  // Ainda não concluído: pergunta a data de conclusão (pode ser retroativa)
+  const newDate = await promptForDate(todayBR());
+  if(newDate === undefined || newDate === '') return; // cancelado
+  cur.done = true;
+  cur.date = newDate;
   render();
   await save();
 }
