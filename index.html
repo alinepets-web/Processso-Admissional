@@ -31,7 +31,9 @@
   td.cell { cursor: pointer; min-width: 90px; color: #999; transition: background 0.15s; }
   td.cell:hover { background: #f0f4ff; }
   td.cell.done { background: #e5f7ea; color: #1e7d3a; font-weight: 600; }
+  td.cell.scheduled { background: #fff4e0; color: #a86400; font-weight: 600; }
   td.cell .date { font-size: 10px; color: #4c9a63; font-weight: 400; }
+  td.cell.scheduled .date { color: #b57a1e; }
   .progress-cell { min-width: 110px; }
   .bar { background: #eee; border-radius: 6px; height: 8px; width: 90px; margin: 0 auto 4px; overflow: hidden; }
   .fill { background: #2f6feb; height: 100%; }
@@ -154,7 +156,7 @@ function updateAuthUI(){
   }
 
   subtitleText.textContent = isEditor
-    ? 'Clique em uma célula para marcar/desmarcar a etapa. A data é registrada automaticamente.'
+    ? 'Clique em uma célula para marcar/desmarcar a etapa (a data é registrada automaticamente). Em Integração e Subsolo, clique para agendar uma data e depois confirmar a conclusão.'
     : 'Modo visualização — apenas alinepets@gmail.com pode editar este checklist.';
 
   editToolbar.style.display = isEditor ? 'flex' : 'none';
@@ -169,8 +171,8 @@ const STEPS = [
   {key:'direcao',   label:'Direção defensiva', desc:'Treinamento sobre práticas seguras de condução.'},
   {key:'quatro4',   label:'4x4',               desc:'Treinamento para operação de veículos 4x4.'},
   {key:'cracha',    label:'Crachá',            desc:'Solicitação e emissão do crachá de acesso.'},
-  {key:'integracao',label:'Integração',        desc:'Apresentação da empresa, normas e cultura.'},
-  {key:'subsolo',   label:'Subsolo',           desc:'Reconhecimento das instalações e orientações de segurança.'}
+  {key:'integracao',label:'Integração',        desc:'Apresentação da empresa, normas e cultura.', schedulable:true},
+  {key:'subsolo',   label:'Subsolo',           desc:'Reconhecimento das instalações e orientações de segurança.', schedulable:true}
 ];
 
 const DEFAULT_EMPLOYEES = [
@@ -196,8 +198,8 @@ function buildInitialData(){
     const steps = {};
     STEPS.forEach(s => {
       steps[s.key] = e.done.includes(s.key)
-        ? {done:true, date:'23/08/2026'}
-        : {done:false, date:''};
+        ? {done:true, date:'23/08/2026', scheduled:''}
+        : {done:false, date:'', scheduled:''};
     });
     return {id:'emp_'+i, name:e.name, steps};
   });
@@ -237,6 +239,26 @@ function todayBR(){
   return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
 }
 
+function parseDateBR(str){
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((str||'').trim());
+  if(!m) return null;
+  const d = parseInt(m[1],10), mo = parseInt(m[2],10), y = parseInt(m[3],10);
+  if(mo<1||mo>12||d<1||d>31) return null;
+  return String(d).padStart(2,'0')+'/'+String(mo).padStart(2,'0')+'/'+y;
+}
+
+async function promptForDate(initial){
+  const raw = prompt('Informe a data (dd/mm/aaaa):', initial||todayBR());
+  if(raw === null) return undefined; // cancelado
+  if(raw.trim() === '') return ''; // limpar
+  const parsed = parseDateBR(raw);
+  if(!parsed){
+    alert('Data inválida. Use o formato dd/mm/aaaa.');
+    return promptForDate(initial);
+  }
+  return parsed;
+}
+
 async function toggleStep(empId, stepKey){
   if(!isEditor) return;
   const emp = state.find(e => e.id === empId);
@@ -247,12 +269,57 @@ async function toggleStep(empId, stepKey){
   await save();
 }
 
+async function handleSchedulableClick(empId, stepKey){
+  if(!isEditor) return;
+  const emp = state.find(e => e.id === empId);
+  if(!emp) return;
+  const s = emp.steps[stepKey];
+  const stepInfo = STEPS.find(x => x.key === stepKey);
+
+  if(s.done){
+    // Já concluído: permite desfazer a conclusão e voltar para "agendado"
+    if(confirm('"'+stepInfo.label+'" de '+emp.name+' está concluído em '+s.date+'. Desfazer conclusão e voltar para agendado?')){
+      s.done = false;
+      s.date = '';
+      render();
+      await save();
+    }
+    return;
+  }
+
+  if(s.scheduled){
+    // Já agendado: confirmar conclusão, reagendar ou remover
+    if(confirm('"'+stepInfo.label+'" de '+emp.name+' está agendado para '+s.scheduled+'. Confirmar conclusão hoje?')){
+      s.done = true;
+      s.date = todayBR();
+      render();
+      await save();
+      return;
+    }
+    if(confirm('Deseja alterar ou remover o agendamento?')){
+      const newDate = await promptForDate(s.scheduled);
+      if(newDate === undefined) return; // cancelado
+      s.scheduled = newDate; // '' remove o agendamento
+      render();
+      await save();
+    }
+    return;
+  }
+
+  // Ainda não agendado: agendar uma data
+  const newDate = await promptForDate(todayBR());
+  if(newDate === undefined || newDate === '') return;
+  s.scheduled = newDate;
+  render();
+  await save();
+}
+
 async function addEmployee(){
   if(!isEditor) return;
   const name = prompt('Nome do novo colaborador:');
   if(!name) return;
   const steps = {};
-  STEPS.forEach(s => steps[s.key] = {done:false, date:''});
+  STEPS.forEach(s => steps[s.key] = {done:false, date:'', scheduled:''});
   state.push({id:'emp_'+Date.now(), name:name.trim(), steps});
   render();
   await save();
@@ -279,7 +346,13 @@ function exportCSV(){
     const row = [emp.name];
     STEPS.forEach(s => {
       const st = emp.steps[s.key];
-      row.push(st.done ? ('OK ('+st.date+')') : '');
+      if(st.done){
+        row.push('OK ('+st.date+')');
+      } else if(s.schedulable && st.scheduled){
+        row.push('Agendado ('+st.scheduled+')');
+      } else {
+        row.push('');
+      }
     });
     row.push(progressOf(emp)+'%');
     rows.push(row);
@@ -309,11 +382,20 @@ function render(){
     const pct = progressOf(emp);
     const cells = STEPS.map(s => {
       const st = emp.steps[s.key];
-      const clickAttr = isEditor ? `onclick="toggleStep('${emp.id}','${s.key}')"` : '';
-      const cls = 'cell ' + (st.done?'done ':'') + (isEditor?'':'readonly');
-      return `<td class="${cls}" title="${s.desc}" ${clickAttr}>
-        ${st.done ? '✔<br><span class="date">'+st.date+'</span>' : '—'}
-      </td>`;
+      const handler = s.schedulable ? 'handleSchedulableClick' : 'toggleStep';
+      const clickAttr = isEditor ? `onclick="${handler}('${emp.id}','${s.key}')"` : '';
+      const isScheduledOnly = s.schedulable && !st.done && st.scheduled;
+      const cls = 'cell ' + (st.done?'done ':'') + (isScheduledOnly?'scheduled ':'') + (isEditor?'':'readonly');
+      let content;
+      if(st.done){
+        content = '✔<br><span class="date">'+st.date+'</span>';
+      } else if(isScheduledOnly){
+        content = '📅<br><span class="date">'+st.scheduled+'</span>';
+      } else {
+        content = '—';
+      }
+      const title = s.schedulable ? s.desc + ' (clique para agendar)' : s.desc;
+      return `<td class="${cls}" title="${title}" ${clickAttr}>${content}</td>`;
     }).join('');
     const delBtn = isEditor ? `<button class="del" onclick="removeEmployee('${emp.id}')">✕</button>` : '';
     return `<tr>
@@ -327,9 +409,9 @@ function render(){
     </tr>`;
   }).join('');
 
-  document.getElementById('legend').innerHTML = STEPS.map(s =>
-    `<b>${s.label}:</b> ${s.desc}`
-  ).join('<br>');
+  document.getElementById('legend').innerHTML =
+    '<b>📅 = agendado</b> &nbsp; <b>✔ = concluído</b><br>' +
+    STEPS.map(s => `<b>${s.label}:</b> ${s.desc}`).join('<br>');
 }
 
 window.onload = async () => {
