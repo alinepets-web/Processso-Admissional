@@ -28,13 +28,13 @@
   th, td { border-bottom: 1px solid #e8e8e8; padding: 10px 8px; text-align: center; font-size: 13px; }
   th { background: #1f2430; color: #fff; position: sticky; top: 0; font-weight: 600; white-space: nowrap; }
   .name-col { text-align: left; font-weight: 600; white-space: nowrap; padding-left: 14px; }
-  td.cell { cursor: pointer; min-width: 90px; color: #999; transition: background 0.15s; }
+  td.cell { cursor: pointer; min-width: 110px; color: #999; transition: background 0.15s; }
   td.cell:hover { background: #f0f4ff; }
   td.cell.done { background: #e5f7ea; color: #1e7d3a; font-weight: 600; }
   td.cell.scheduled { background: #fff4e0; color: #a86400; font-weight: 600; }
   td.cell .date { font-size: 10px; color: #4c9a63; font-weight: 400; }
   td.cell.scheduled .date { color: #b57a1e; }
-  td.cell .obs-text { font-size: 10px; color: #555; font-weight: 400; font-style: italic; display: inline-block; max-width: 88px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+  td.cell .obs-text { display: block; font-size: 10px; color: #555; font-weight: 400; font-style: italic; white-space: normal; word-break: break-word; line-height: 1.25; margin-top: 2px; }
   .progress-cell { min-width: 110px; }
   .bar { background: #eee; border-radius: 6px; height: 8px; width: 90px; margin: 0 auto 4px; overflow: hidden; }
   .fill { background: #2f6feb; height: 100%; }
@@ -280,7 +280,7 @@ async function promptForObs(current){
 
 // Resume a observação para caber na célula (mostra sempre, sem precisar passar o mouse)
 function abbreviate(text, maxLen){
-  maxLen = maxLen || 16;
+  maxLen = maxLen || 28;
   if(!text) return '';
   return text.length > maxLen ? text.slice(0, maxLen-1).trim()+'…' : text;
 }
