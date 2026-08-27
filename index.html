@@ -34,6 +34,7 @@
   td.cell.scheduled { background: #fff4e0; color: #a86400; font-weight: 600; }
   td.cell .date { font-size: 10px; color: #4c9a63; font-weight: 400; }
   td.cell.scheduled .date { color: #b57a1e; }
+  .obs-flag { font-size: 10px; cursor: help; }
   .progress-cell { min-width: 110px; }
   .bar { background: #eee; border-radius: 6px; height: 8px; width: 90px; margin: 0 auto 4px; overflow: hidden; }
   .fill { background: #2f6feb; height: 100%; }
@@ -198,8 +199,8 @@ function buildInitialData(){
     const steps = {};
     STEPS.forEach(s => {
       steps[s.key] = e.done.includes(s.key)
-        ? {done:true, date:'23/08/2026', scheduled:''}
-        : {done:false, date:'', scheduled:''};
+        ? {done:true, date:'23/08/2026', scheduled:'', obs:''}
+        : {done:false, date:'', scheduled:'', obs:''};
     });
     return {id:'emp_'+i, name:e.name, steps};
   });
@@ -211,10 +212,21 @@ async function load(){
   const snap = await checklistDocRef.get();
   if(snap.exists && snap.data().employees){
     state = snap.data().employees;
+    normalizeState();
   } else {
     state = buildInitialData();
     await save();
   }
+}
+
+// Garante que colaboradores/etapas salvos antes da criação do campo "obs" não quebrem a interface
+function normalizeState(){
+  state.forEach(emp => {
+    STEPS.forEach(s => {
+      if(!emp.steps[s.key]) emp.steps[s.key] = {done:false, date:'', scheduled:'', obs:''};
+      if(emp.steps[s.key].obs === undefined) emp.steps[s.key].obs = '';
+    });
+  });
 }
 
 async function save(){
@@ -229,6 +241,7 @@ function listenForChanges(){
     if(isRemoteUpdate) return; // ignora o eco da própria escrita
     if(doc.exists && doc.data().employees){
       state = doc.data().employees;
+      normalizeState();
       render();
     }
   });
@@ -259,6 +272,12 @@ async function promptForDate(initial){
   return parsed;
 }
 
+async function promptForObs(current){
+  const raw = prompt('Observação (opcional, detalhe o status da etapa):', current||'');
+  if(raw === null) return undefined; // cancelado: mantém o que já estava
+  return raw.trim();
+}
+
 async function toggleStep(empId, stepKey){
   if(!isEditor) return;
   const emp = state.find(e => e.id === empId);
@@ -267,7 +286,7 @@ async function toggleStep(empId, stepKey){
   const stepInfo = STEPS.find(x => x.key === stepKey);
 
   if(cur.done){
-    // Já concluído: permite desmarcar ou corrigir a data
+    // Já concluído: permite desmarcar, corrigir a data ou a observação
     if(confirm('"'+stepInfo.label+'" de '+emp.name+' está concluído em '+cur.date+'. Desmarcar conclusão?')){
       cur.done = false;
       cur.date = '';
@@ -281,6 +300,14 @@ async function toggleStep(empId, stepKey){
       cur.date = newDate;
       render();
       await save();
+      return;
+    }
+    if(confirm('Deseja editar a observação desta etapa?')){
+      const newObs = await promptForObs(cur.obs);
+      if(newObs === undefined) return; // cancelado
+      cur.obs = newObs;
+      render();
+      await save();
     }
     return;
   }
@@ -290,6 +317,8 @@ async function toggleStep(empId, stepKey){
   if(newDate === undefined || newDate === '') return; // cancelado
   cur.done = true;
   cur.date = newDate;
+  const newObs = await promptForObs(cur.obs);
+  if(newObs !== undefined) cur.obs = newObs;
   render();
   await save();
 }
@@ -302,7 +331,7 @@ async function handleSchedulableClick(empId, stepKey){
   const stepInfo = STEPS.find(x => x.key === stepKey);
 
   if(s.done){
-    // Já concluído: permite desfazer a conclusão ou corrigir a data
+    // Já concluído: permite desfazer a conclusão ou corrigir a data/observação
     if(confirm('"'+stepInfo.label+'" de '+emp.name+' está concluído em '+s.date+'. Desfazer conclusão e voltar para agendado?')){
       s.done = false;
       s.date = '';
@@ -316,17 +345,27 @@ async function handleSchedulableClick(empId, stepKey){
       s.date = newDate;
       render();
       await save();
+      return;
+    }
+    if(confirm('Deseja editar a observação desta etapa?')){
+      const newObs = await promptForObs(s.obs);
+      if(newObs === undefined) return; // cancelado
+      s.obs = newObs;
+      render();
+      await save();
     }
     return;
   }
 
   if(s.scheduled){
-    // Já agendado: confirmar conclusão, reagendar ou remover
+    // Já agendado: confirmar conclusão, reagendar, remover ou anotar observação
     if(confirm('"'+stepInfo.label+'" de '+emp.name+' está agendado para '+s.scheduled+'. Confirmar conclusão?')){
       const newDate = await promptForDate(todayBR());
       if(newDate === undefined || newDate === '') return; // cancelado
       s.done = true;
       s.date = newDate;
+      const newObs = await promptForObs(s.obs);
+      if(newObs !== undefined) s.obs = newObs;
       render();
       await save();
       return;
@@ -337,6 +376,14 @@ async function handleSchedulableClick(empId, stepKey){
       s.scheduled = newDate; // '' remove o agendamento
       render();
       await save();
+      return;
+    }
+    if(confirm('Deseja editar a observação desta etapa?')){
+      const newObs = await promptForObs(s.obs);
+      if(newObs === undefined) return; // cancelado
+      s.obs = newObs;
+      render();
+      await save();
     }
     return;
   }
@@ -345,6 +392,8 @@ async function handleSchedulableClick(empId, stepKey){
   const newDate = await promptForDate(todayBR());
   if(newDate === undefined || newDate === '') return;
   s.scheduled = newDate;
+  const newObs = await promptForObs(s.obs);
+  if(newObs !== undefined) s.obs = newObs;
   render();
   await save();
 }
@@ -354,7 +403,7 @@ async function addEmployee(){
   const name = prompt('Nome do novo colaborador:');
   if(!name) return;
   const steps = {};
-  STEPS.forEach(s => steps[s.key] = {done:false, date:'', scheduled:''});
+  STEPS.forEach(s => steps[s.key] = {done:false, date:'', scheduled:'', obs:''});
   state.push({id:'emp_'+Date.now(), name:name.trim(), steps});
   render();
   await save();
@@ -381,13 +430,16 @@ function exportCSV(){
     const row = [emp.name];
     STEPS.forEach(s => {
       const st = emp.steps[s.key];
+      let cell;
       if(st.done){
-        row.push('OK ('+st.date+')');
+        cell = 'OK ('+st.date+')';
       } else if(s.schedulable && st.scheduled){
-        row.push('Agendado ('+st.scheduled+')');
+        cell = 'Agendado ('+st.scheduled+')';
       } else {
-        row.push('');
+        cell = '';
       }
+      if(st.obs) cell += (cell ? ' - ' : '') + 'Obs: ' + st.obs;
+      row.push(cell);
     });
     row.push(progressOf(emp)+'%');
     rows.push(row);
@@ -421,15 +473,16 @@ function render(){
       const clickAttr = isEditor ? `onclick="${handler}('${emp.id}','${s.key}')"` : '';
       const isScheduledOnly = s.schedulable && !st.done && st.scheduled;
       const cls = 'cell ' + (st.done?'done ':'') + (isScheduledOnly?'scheduled ':'') + (isEditor?'':'readonly');
+      const obsIcon = st.obs ? ' <span class="obs-flag">💬</span>' : '';
       let content;
       if(st.done){
-        content = '✔<br><span class="date">'+st.date+'</span>';
+        content = '✔<br><span class="date">'+st.date+'</span>'+obsIcon;
       } else if(isScheduledOnly){
-        content = '📅<br><span class="date">'+st.scheduled+'</span>';
+        content = '📅<br><span class="date">'+st.scheduled+'</span>'+obsIcon;
       } else {
-        content = '—';
+        content = '—'+obsIcon;
       }
-      const title = s.schedulable ? s.desc + ' (clique para agendar)' : s.desc;
+      const title = (s.schedulable ? s.desc + ' (clique para agendar)' : s.desc) + (st.obs ? '\nObservação: '+st.obs : '');
       return `<td class="${cls}" title="${title}" ${clickAttr}>${content}</td>`;
     }).join('');
     const delBtn = isEditor ? `<button class="del" onclick="removeEmployee('${emp.id}')">✕</button>` : '';
@@ -445,7 +498,7 @@ function render(){
   }).join('');
 
   document.getElementById('legend').innerHTML =
-    '<b>📅 = agendado</b> &nbsp; <b>✔ = concluído</b><br>' +
+    '<b>📅 = agendado</b> &nbsp; <b>✔ = concluído</b> &nbsp; <b>💬 = com observação (passe o mouse para ler)</b><br>' +
     STEPS.map(s => `<b>${s.label}:</b> ${s.desc}`).join('<br>');
 }
 
