@@ -34,7 +34,7 @@
   td.cell.scheduled { background: #fff4e0; color: #a86400; font-weight: 600; }
   td.cell .date { font-size: 10px; color: #4c9a63; font-weight: 400; }
   td.cell.scheduled .date { color: #b57a1e; }
-  .obs-flag { font-size: 10px; cursor: help; }
+  td.cell .obs-text { font-size: 10px; color: #555; font-weight: 400; font-style: italic; display: inline-block; max-width: 88px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
   .progress-cell { min-width: 110px; }
   .bar { background: #eee; border-radius: 6px; height: 8px; width: 90px; margin: 0 auto 4px; overflow: hidden; }
   .fill { background: #2f6feb; height: 100%; }
@@ -278,6 +278,19 @@ async function promptForObs(current){
   return raw.trim();
 }
 
+// Resume a observação para caber na célula (mostra sempre, sem precisar passar o mouse)
+function abbreviate(text, maxLen){
+  maxLen = maxLen || 16;
+  if(!text) return '';
+  return text.length > maxLen ? text.slice(0, maxLen-1).trim()+'…' : text;
+}
+
+function escapeHTML(str){
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
 async function toggleStep(empId, stepKey){
   if(!isEditor) return;
   const emp = state.find(e => e.id === empId);
@@ -473,16 +486,16 @@ function render(){
       const clickAttr = isEditor ? `onclick="${handler}('${emp.id}','${s.key}')"` : '';
       const isScheduledOnly = s.schedulable && !st.done && st.scheduled;
       const cls = 'cell ' + (st.done?'done ':'') + (isScheduledOnly?'scheduled ':'') + (isEditor?'':'readonly');
-      const obsIcon = st.obs ? ' <span class="obs-flag">💬</span>' : '';
+      const obsLine = st.obs ? '<br><span class="obs-text">'+escapeHTML(abbreviate(st.obs))+'</span>' : '';
       let content;
       if(st.done){
-        content = '✔<br><span class="date">'+st.date+'</span>'+obsIcon;
+        content = '✔<br><span class="date">'+st.date+'</span>'+obsLine;
       } else if(isScheduledOnly){
-        content = '📅<br><span class="date">'+st.scheduled+'</span>'+obsIcon;
+        content = '📅<br><span class="date">'+st.scheduled+'</span>'+obsLine;
       } else {
-        content = '—'+obsIcon;
+        content = '—'+obsLine;
       }
-      const title = (s.schedulable ? s.desc + ' (clique para agendar)' : s.desc) + (st.obs ? '\nObservação: '+st.obs : '');
+      const title = escapeHTML((s.schedulable ? s.desc + ' (clique para agendar)' : s.desc) + (st.obs ? '\nObservação: '+st.obs : ''));
       return `<td class="${cls}" title="${title}" ${clickAttr}>${content}</td>`;
     }).join('');
     const delBtn = isEditor ? `<button class="del" onclick="removeEmployee('${emp.id}')">✕</button>` : '';
@@ -498,7 +511,7 @@ function render(){
   }).join('');
 
   document.getElementById('legend').innerHTML =
-    '<b>📅 = agendado</b> &nbsp; <b>✔ = concluído</b> &nbsp; <b>💬 = com observação (passe o mouse para ler)</b><br>' +
+    '<b>📅 = agendado</b> &nbsp; <b>✔ = concluído</b> &nbsp; <b>texto em itálico = observação (resumida; passe o mouse para ler completa)</b><br>' +
     STEPS.map(s => `<b>${s.label}:</b> ${s.desc}`).join('<br>');
 }
 
