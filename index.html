@@ -302,10 +302,18 @@ async function handleSchedulableClick(empId, stepKey){
   const stepInfo = STEPS.find(x => x.key === stepKey);
 
   if(s.done){
-    // Já concluído: permite desfazer a conclusão e voltar para "agendado"
+    // Já concluído: permite desfazer a conclusão ou corrigir a data
     if(confirm('"'+stepInfo.label+'" de '+emp.name+' está concluído em '+s.date+'. Desfazer conclusão e voltar para agendado?')){
       s.done = false;
       s.date = '';
+      render();
+      await save();
+      return;
+    }
+    if(confirm('Deseja editar a data de conclusão?')){
+      const newDate = await promptForDate(s.date);
+      if(newDate === undefined || newDate === '') return; // cancelado ou vazio
+      s.date = newDate;
       render();
       await save();
     }
