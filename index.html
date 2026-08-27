@@ -156,7 +156,7 @@ function updateAuthUI(){
   }
 
   subtitleText.textContent = isEditor
-    ? 'Clique em uma célula para marcar a etapa como concluída e informar a data (pode ser retroativa). Clique numa etapa já concluída para desmarcar ou corrigir a data. Em Integração e Subsolo, clique para agendar uma data e depois confirmar a conclusão.'
+    ? 'Clique em uma célula para marcar a etapa como concluída e informar a data (pode ser retroativa). Clique numa etapa já concluída para desmarcar ou corrigir a data. Em Integração e Subsolo, clique para agendar uma data e depois confirmar a conclusão informando a data real em que ela ocorreu.'
     : 'Modo visualização — apenas alinepets@gmail.com pode editar este checklist.';
 
   editToolbar.style.display = isEditor ? 'flex' : 'none';
@@ -314,9 +314,11 @@ async function handleSchedulableClick(empId, stepKey){
 
   if(s.scheduled){
     // Já agendado: confirmar conclusão, reagendar ou remover
-    if(confirm('"'+stepInfo.label+'" de '+emp.name+' está agendado para '+s.scheduled+'. Confirmar conclusão hoje?')){
+    if(confirm('"'+stepInfo.label+'" de '+emp.name+' está agendado para '+s.scheduled+'. Confirmar conclusão?')){
+      const newDate = await promptForDate(todayBR());
+      if(newDate === undefined || newDate === '') return; // cancelado
       s.done = true;
-      s.date = todayBR();
+      s.date = newDate;
       render();
       await save();
       return;
