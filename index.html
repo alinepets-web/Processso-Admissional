@@ -28,6 +28,10 @@
   th, td { border-bottom: 1px solid #e8e8e8; padding: 10px 8px; text-align: center; font-size: 13px; }
   th { background: #1f2430; color: #fff; position: sticky; top: 0; font-weight: 600; white-space: nowrap; }
   .name-col { text-align: left; font-weight: 600; white-space: nowrap; padding-left: 14px; }
+  .role-col { text-align: left; white-space: nowrap; color: #666; font-size: 12px; }
+  .role-col.editable { cursor: pointer; }
+  .role-col.editable:hover { background: #f0f4f8; }
+  .role-empty { color: #b7c0c9; font-style: italic; font-size: 11px; }
   td.cell { cursor: pointer; min-width: 110px; color: #999; transition: background 0.15s; }
   td.cell:hover { background: #f0f4ff; }
   td.cell.done { background: #e5f7ea; color: #1e7d3a; font-weight: 600; }
@@ -177,19 +181,19 @@ const STEPS = [
 ];
 
 const DEFAULT_EMPLOYEES = [
-  {name:'Helton', done:['subsolo']},
-  {name:'Anthony', done:['subsolo']},
-  {name:'José Fausto', done:['subsolo']},
-  {name:'Marlon', done:['subsolo']},
-  {name:'Isaque', done:['subsolo']},
-  {name:'Josemalson', done:['subsolo']},
-  {name:'Wagner', done:['integracao']},
-  {name:'Leonardo', done:[]},
-  {name:'Gregory', done:[]},
-  {name:'Kennedy', done:[]},
-  {name:'Marcu Tulio', done:[]},
-  {name:'Thallisson', done:[]},
-  {name:'Marcelo Ventura', done:[]}
+  {name:'Helton', role:'', done:['subsolo']},
+  {name:'Anthony', role:'', done:['subsolo']},
+  {name:'José Fausto', role:'', done:['subsolo']},
+  {name:'Marlon', role:'', done:['subsolo']},
+  {name:'Isaque', role:'', done:['subsolo']},
+  {name:'Josemalson', role:'', done:['subsolo']},
+  {name:'Wagner', role:'', done:['integracao']},
+  {name:'Leonardo', role:'', done:[]},
+  {name:'Gregory', role:'', done:[]},
+  {name:'Kennedy', role:'', done:[]},
+  {name:'Marcu Tulio', role:'', done:[]},
+  {name:'Thallisson', role:'', done:[]},
+  {name:'Marcelo Ventura', role:'', done:[]}
 ];
 
 let state = [];
@@ -202,7 +206,7 @@ function buildInitialData(){
         ? {done:true, date:'23/08/2026', scheduled:'', obs:''}
         : {done:false, date:'', scheduled:'', obs:''};
     });
-    return {id:'emp_'+i, name:e.name, steps};
+    return {id:'emp_'+i, name:e.name, role:e.role||'', steps};
   });
 }
 
@@ -222,6 +226,7 @@ async function load(){
 // Garante que colaboradores/etapas salvos antes da criação do campo "obs" não quebrem a interface
 function normalizeState(){
   state.forEach(emp => {
+    if(emp.role === undefined) emp.role = '';
     STEPS.forEach(s => {
       if(!emp.steps[s.key]) emp.steps[s.key] = {done:false, date:'', scheduled:'', obs:''};
       if(emp.steps[s.key].obs === undefined) emp.steps[s.key].obs = '';
@@ -415,9 +420,21 @@ async function addEmployee(){
   if(!isEditor) return;
   const name = prompt('Nome do novo colaborador:');
   if(!name) return;
+  const role = prompt('Cargo (opcional):', '') || '';
   const steps = {};
   STEPS.forEach(s => steps[s.key] = {done:false, date:'', scheduled:'', obs:''});
-  state.push({id:'emp_'+Date.now(), name:name.trim(), steps});
+  state.push({id:'emp_'+Date.now(), name:name.trim(), role:role.trim(), steps});
+  render();
+  await save();
+}
+
+async function editRole(empId){
+  if(!isEditor) return;
+  const emp = state.find(e => e.id === empId);
+  if(!emp) return;
+  const role = prompt('Cargo de '+emp.name+':', emp.role||'');
+  if(role === null) return; // cancelado
+  emp.role = role.trim();
   render();
   await save();
 }
@@ -438,9 +455,9 @@ function progressOf(emp){
 }
 
 function exportCSV(){
-  const rows = [['Colaborador', ...STEPS.map(s => s.label), 'Progresso']];
+  const rows = [['Colaborador', 'Cargo', ...STEPS.map(s => s.label), 'Progresso']];
   state.forEach(emp => {
-    const row = [emp.name];
+    const row = [emp.name, emp.role||''];
     STEPS.forEach(s => {
       const st = emp.steps[s.key];
       let cell;
@@ -475,6 +492,7 @@ async function resetAll(){
 function render(){
   document.getElementById('headerRow').innerHTML =
     '<th class="name-col">Colaborador</th>' +
+    '<th class="role-col">Cargo</th>' +
     STEPS.map(s => `<th title="${s.desc}">${s.label}</th>`).join('') +
     '<th>Progresso</th><th></th>';
 
@@ -499,8 +517,12 @@ function render(){
       return `<td class="${cls}" title="${title}" ${clickAttr}>${content}</td>`;
     }).join('');
     const delBtn = isEditor ? `<button class="del" onclick="removeEmployee('${emp.id}')">✕</button>` : '';
+    const roleClickAttr = isEditor ? `onclick="editRole('${emp.id}')"` : '';
+    const roleCls = 'role-col' + (isEditor ? ' editable' : '');
+    const roleText = emp.role ? escapeHTML(emp.role) : (isEditor ? '<span class="role-empty">+ definir</span>' : '');
     return `<tr>
       <td class="name-col">${emp.name}</td>
+      <td class="${roleCls}" ${roleClickAttr} title="${isEditor?'Clique para editar o cargo':''}">${roleText}</td>
       ${cells}
       <td class="progress-cell">
         <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
