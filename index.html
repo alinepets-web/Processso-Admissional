@@ -171,8 +171,8 @@ const STEPS = [
   {key:'bancodoc',  label:'Bancodoc',          desc:'Cadastro e envio da documentação admissional no sistema.'},
   {key:'direcao',   label:'Direção defensiva', desc:'Treinamento sobre práticas seguras de condução.'},
   {key:'quatro4',   label:'4x4',               desc:'Treinamento para operação de veículos 4x4.'},
-  {key:'cracha',    label:'Crachá',            desc:'Solicitação e emissão do crachá de acesso.'},
   {key:'integracao',label:'Integração',        desc:'Apresentação da empresa, normas e cultura.', schedulable:true},
+  {key:'cracha',    label:'Crachá',            desc:'Solicitação e emissão do crachá de acesso.'},
   {key:'subsolo',   label:'Subsolo',           desc:'Reconhecimento das instalações e orientações de segurança.', schedulable:true}
 ];
 
@@ -372,7 +372,7 @@ async function handleSchedulableClick(empId, stepKey){
 
   if(s.scheduled){
     // Já agendado: confirmar conclusão, reagendar, remover ou anotar observação
-    if(confirm('"'+stepInfo.label+'" de '+emp.name+' está agendado para '+s.scheduled+'. Confirmar conclusão?')){
+    if(confirm('"'+stepInfo.label+'" de '+emp.name+' está agendado para '+s.scheduled+'. Confirmar conclusão? (você vai poder informar a data real da conclusão a seguir)')){
       const newDate = await promptForDate(todayBR());
       if(newDate === undefined || newDate === '') return; // cancelado
       s.done = true;
