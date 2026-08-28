@@ -23,14 +23,14 @@
   }
   button.secondary { background: #ffffff; color: #2f6feb; border: 1px solid #2f6feb; }
   button.danger { background: #ffffff; color: #d64545; border: 1px solid #d64545; }
-  .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .table-wrap { overflow: auto; max-height: 75vh; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
   table { border-collapse: collapse; width: 100%; min-width: 900px; }
   th, td { border-bottom: 1px solid #e8e8e8; padding: 10px 8px; text-align: center; font-size: 13px; }
   th { background: #1f2430; color: #fff; position: sticky; top: 0; font-weight: 600; white-space: nowrap; }
   .name-col { text-align: left; font-weight: 600; white-space: nowrap; padding-left: 14px; }
-  .role-col { text-align: left; white-space: nowrap; color: #666; font-size: 12px; }
-  .role-col.editable { cursor: pointer; }
-  .role-col.editable:hover { background: #f0f4f8; }
+  td.role-col { text-align: left; white-space: nowrap; color: #666; font-size: 12px; }
+  td.role-col.editable { cursor: pointer; }
+  td.role-col.editable:hover { background: #f0f4f8; }
   .role-empty { color: #b7c0c9; font-style: italic; font-size: 11px; }
   td.cell { cursor: pointer; min-width: 110px; color: #999; transition: background 0.15s; }
   td.cell:hover { background: #f0f4ff; }
