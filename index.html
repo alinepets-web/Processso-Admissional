@@ -36,7 +36,7 @@
   td.cell:hover { background: #f0f4ff; }
   td.cell.done { background: #e5f7ea; color: #1e7d3a; font-weight: 600; }
   td.cell.scheduled { background: #fff4e0; color: #a86400; font-weight: 600; }
-  td.cell .date { font-size: 10px; color: #4c9a63; font-weight: 400; }
+  td.cell .date { font-size: 10px; color: #4c9a63; font-weight: 400; white-space: normal; word-break: break-word; }
   td.cell.scheduled .date { color: #b57a1e; }
   td.cell .obs-text { display: block; font-size: 10px; color: #555; font-weight: 400; font-style: italic; white-space: normal; word-break: break-word; line-height: 1.25; margin-top: 2px; }
   .progress-cell { min-width: 110px; }
@@ -267,12 +267,26 @@ function parseDateBR(str){
 }
 
 async function promptForDate(initial){
-  const raw = prompt('Informe a data (dd/mm/aaaa):', initial||todayBR());
+  const raw = prompt('Informe a data (dd/mm/aaaa) ou um período (dd/mm/aaaa a dd/mm/aaaa):', initial||todayBR());
   if(raw === null) return undefined; // cancelado
   if(raw.trim() === '') return ''; // limpar
-  const parsed = parseDateBR(raw);
+  const value = raw.trim();
+
+  // Aceita período: "dd/mm/aaaa a dd/mm/aaaa" (também aceita "até" ou "-" como separador)
+  const parts = value.split(/\s*(?:a|à|até|-)\s*/i).filter(Boolean);
+  if(parts.length === 2){
+    const start = parseDateBR(parts[0]);
+    const end = parseDateBR(parts[1]);
+    if(!start || !end){
+      alert('Período inválido. Use o formato dd/mm/aaaa a dd/mm/aaaa.');
+      return promptForDate(initial);
+    }
+    return start + ' a ' + end;
+  }
+
+  const parsed = parseDateBR(value);
   if(!parsed){
-    alert('Data inválida. Use o formato dd/mm/aaaa.');
+    alert('Data inválida. Use o formato dd/mm/aaaa ou um período "dd/mm/aaaa a dd/mm/aaaa".');
     return promptForDate(initial);
   }
   return parsed;
