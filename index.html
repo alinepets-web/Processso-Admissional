@@ -13,7 +13,7 @@
     padding: 24px;
     color: #1f2430;
   }
-  .container { max-width: 1200px; margin: 0 auto; }
+  .container { max-width: 1500px; margin: 0 auto; }
   h1 { font-size: 22px; margin-bottom: 4px; }
   .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
   .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -24,27 +24,27 @@
   button.secondary { background: #ffffff; color: #2f6feb; border: 1px solid #2f6feb; }
   button.danger { background: #ffffff; color: #d64545; border: 1px solid #d64545; }
   .table-wrap { overflow: auto; max-height: 75vh; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  table { border-collapse: collapse; width: 100%; min-width: 900px; }
-  th, td { border-bottom: 1px solid #e8e8e8; padding: 10px 8px; text-align: center; font-size: 13px; }
-  th { background: #1f2430; color: #fff; position: sticky; top: 0; font-weight: 600; white-space: nowrap; }
-  .name-col { text-align: left; font-weight: 600; white-space: nowrap; padding-left: 14px; }
-  td.role-col { text-align: left; white-space: nowrap; color: #666; font-size: 12px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid #e8e8e8; padding: 6px 4px; text-align: center; font-size: 12px; line-height: 1.25; }
+  th { background: #1f2430; color: #fff; position: sticky; top: 0; font-weight: 600; white-space: normal; }
+  .name-col { text-align: left; font-weight: 600; white-space: normal; padding-left: 8px; width: 84px; max-width: 84px; word-break: break-word; }
+  td.role-col { text-align: left; white-space: normal; color: #666; font-size: 11px; width: 80px; max-width: 80px; word-break: break-word; }
   td.role-col.editable { cursor: pointer; }
   td.role-col.editable:hover { background: #f0f4f8; }
   .role-empty { color: #b7c0c9; font-style: italic; font-size: 11px; }
-  td.cell, .subcell { cursor: pointer; min-width: 110px; color: #999; transition: background 0.15s; }
+  td.cell, .subcell { cursor: pointer; min-width: 70px; color: #999; transition: background 0.15s; }
   td.cell:hover, .subcell:hover { background: #f0f4ff; }
   td.cell.done, .subcell.done { background: #e5f7ea; color: #1e7d3a; font-weight: 600; }
   td.cell.scheduled, .subcell.scheduled { background: #fff4e0; color: #a86400; font-weight: 600; }
   td.cell .date, .subcell .date { font-size: 10px; color: #4c9a63; font-weight: 400; white-space: normal; word-break: break-word; }
   td.cell.scheduled .date, .subcell.scheduled .date { color: #b57a1e; }
-  td.cell .obs-text, .subcell .obs-text { display: block; font-size: 10px; color: #555; font-weight: 400; font-style: italic; white-space: normal; word-break: break-word; line-height: 1.25; margin-top: 2px; }
-  td.cell-group { padding: 0; min-width: 110px; }
-  .subcell { padding: 8px; border-top: 1px solid #e8e8e8; }
+  td.cell .obs-text, .subcell .obs-text { display: block; font-size: 10px; color: #555; font-weight: 400; font-style: italic; white-space: normal; word-break: break-word; line-height: 1.25; margin-top: 0; }
+  td.cell-group { padding: 0; min-width: 78px; }
+  .subcell { padding: 3px 4px; line-height: 1.2; border-top: 1px solid #e8e8e8; }
   .subcell:first-child { border-top: none; }
-  .subcell .sublabel { display: block; font-size: 10px; font-weight: 700; letter-spacing: .3px; margin-bottom: 1px; }
-  .progress-cell { min-width: 110px; }
-  .bar { background: #eee; border-radius: 6px; height: 8px; width: 90px; margin: 0 auto 4px; overflow: hidden; }
+  .subcell .sublabel { display: block; font-size: 10px; font-weight: 700; letter-spacing: .3px; margin-bottom: 0; }
+  .progress-cell { min-width: 60px; }
+  .bar { background: #eee; border-radius: 6px; height: 8px; width: 56px; margin: 0 auto 2px; overflow: hidden; }
   .fill { background: #2f6feb; height: 100%; }
   .pct { font-size: 11px; color: #555; }
   .del { background: transparent; color: #d64545; border: none; font-size: 14px; padding: 4px 8px; }
@@ -571,13 +571,14 @@ function stepCellHTML(emp, s, inGroup){
   const clickAttr = isEditor ? `onclick="${handler}('${emp.id}','${s.key}')"` : '';
   const isScheduledOnly = s.schedulable && !st.done && st.scheduled;
   const cls = (inGroup ? 'subcell ' : 'cell ') + (st.done?'done ':'') + (isScheduledOnly?'scheduled ':'') + (isEditor?'':'readonly');
-  const obsLine = st.obs ? '<br><span class="obs-text">'+escapeHTML(abbreviate(st.obs))+'</span>' : '';
+  const obsLine = st.obs ? '<span class="obs-text">'+escapeHTML(abbreviate(st.obs))+'</span>' : '';
   const subLabel = inGroup ? '<span class="sublabel">'+escapeHTML(s.label)+'</span>' : '';
+  const sep = inGroup ? ' ' : '<br>';
   let content;
   if(st.done){
-    content = '✔<br><span class="date">'+st.date+'</span>'+obsLine;
+    content = '✔'+sep+'<span class="date">'+st.date+'</span>'+obsLine;
   } else if(isScheduledOnly){
-    content = '📅<br><span class="date">'+st.scheduled+'</span>'+obsLine;
+    content = '📅'+sep+'<span class="date">'+st.scheduled+'</span>'+obsLine;
   } else {
     content = '—'+obsLine;
   }
